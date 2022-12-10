@@ -1,0 +1,116 @@
+#include <stdio.h>
+#include <stdlib.h>
+#include <time.h>
+#define EPS 1e-9
+//#define RANDOM_MAX 10
+typedef struct {
+	int x;
+	int y;
+	int q;
+}Point;
+//三维函数，点是三维坐标。
+
+typedef struct {
+	Point point;
+	int z;
+}Abird;
+//Abird结构体存放粒子的点和对应函数值的信息
+
+typedef struct {
+	Abird a[500];
+}zuiyou;
+//局部最优则建立一个zuiyou数组，全局最优建立一个zuiyou就可
+//这里的500代表会放500个轮次的全局最优进去，所以500是轮次数。
+
+int f(int x, int y, int q)//目标函数
+{
+	//return 2 * x * x * x + 3 * y * y * y + 4 * x * y * y - 5 * x * x * y + 10;
+	return function(x,y,q,150-q);
+}
+
+Abird mymax(Abird bird[], int sz)//选择Abird作为返回值目的是返回整个带有完整信息(点，值)的最大值。
+{
+	Abird ret = bird[0];
+	//printf("1");
+	for (int i = 0; i < sz; i++)
+	{
+		if (ret.z - bird[i].z < EPS
+			&& bird[i].point.x - 0.0 > EPS && 10.0 - bird[i].point.x > EPS
+			&& bird[i].point.y - 0.0 > EPS && 10.0 - bird[i].point.y > EPS
+			&& bird[i].point.q > 125  && 150 > bird[i].point.y)
+        //控制粒子不要飞出界，飞出界的粒子我们就舍弃了
+		{
+			ret = bird[i];
+		}
+	}
+	return ret;
+}
+int main()
+{
+	Abird bird[50] = { 0 };//50只鸟
+	zuiyou jubu[50] = { 0 };//jubu[i].a[t]表示i鸟第t轮的局部最优
+	zuiyou quanju = { 0 };//quanju.a[t]表示第t轮的全局最优
+	Point v[50] = { 0 };//50只鸟速度矢量的创建
+	srand((unsigned)time(NULL));//随机种子
+	for (int i = 0; i < 50; i++)
+	{
+		printf("1");
+		bird[i].point.x = 1 + 1 * (rand() % 9) ;
+		bird[i].point.y = 1 + 1 * (rand() % 9) ;
+		bird[i].point.q = 125 + 1 * (rand()% 25);
+		v[i].x = 1 * (rand() % RAND_MAX) / RAND_MAX ;
+		v[i].y = 1 * (rand() % RAND_MAX) / RAND_MAX ;
+		v[i].q = 1 * (rand() % RAND_MAX) / RAND_MAX ;
+	}//初始化50个粒子的速度和位置。
+//随机生成[x, y)的浮点数，x ＋ 1.0 * ( rand() % RAND_MAX ) / RAND_MAX * ( y - x )
+//随机生成[x,y]的浮点数，x ＋ 1.0 * rand() / RAND_MAX * ( y - x )
+
+	for (int i = 0; i < 10; i++)
+	{
+		bird[i].point.x += v[i].x;
+		bird[i].point.y += v[i].y;
+		bird[i].point.q += v[i].q;
+		bird[i].z = f(bird[i].point.x, bird[i].point.y, bird[i].point.q);
+		jubu[i].a[0] = bird[i];//第0轮的局部最优就是这次的位置
+	}
+	quanju.a[0] = mymax(bird, 50);
+	//printf("%d",bird[0].z);
+    //第0轮的全局最优
+	int ti = 1;
+	while (ti < 10)//进行499轮
+	{
+		for (int i = 0; i < 50; i++)
+		{
+            //更新速度
+			v[i].x = 0.5 * v[i].x + 0.2 *  (jubu[i].a[ti - 1].point.x - bird[i].point.x) + 0.3 *  (quanju.a[ti - 1].point.x - bird[i].point.x);
+			v[i].y = 0.5 * v[i].y + 0.2 *  (jubu[i].a[ti - 1].point.y - bird[i].point.y) + 0.3 *  (quanju.a[ti - 1].point.y - bird[i].point.y);
+			v[i].q = 0.5 * v[i].q + 0.2 *  (jubu[i].a[ti - 1].point.q - bird[i].point.q) + 0.3 *  (quanju.a[ti - 1].point.q - bird[i].point.q);
+            //更新位置
+			bird[i].point.x += v[i].x;
+			bird[i].point.y += v[i].y;
+			bird[i].point.q += v[i].q;
+			if(bird[i].point.x - 0.0 > EPS && 10.0 - bird[i].point.x > EPS
+			&& bird[i].point.y - 0.0 > EPS && 10.0 - bird[i].point.y > EPS
+			&& bird[i].point.q > 125 && 150 > bird[i].point.y)
+             //保证经过第t轮后出界的粒子被舍弃
+			{
+				bird[i].z = f(bird[i].point.x, bird[i].point.y, bird[i].point.q);
+			}
+			else
+			{
+				bird[i].z = 0;
+			}
+			jubu[i].a[ti] = bird[i];//先把此次的局部最优储存起来
+			jubu[i].a[ti] = mymax(jubu[i].a, ti + 1);//与历史过往的局部最优比较
+		}
+		quanju.a[ti] = mymax(bird, 50);//求第t轮的全局最优
+		if (quanju.a[ti].z - quanju.a[ti - 1].z < EPS)
+		{
+			quanju.a[ti] = quanju.a[ti - 1];
+		}//与上一轮的全局最优相比，若比上一轮差则交换。
+		ti++;
+		printf("%d",quanju.a[ti - 1].z);
+	}
+	printf("粒子群算法的解是%d，对应坐标为(%d,%d,%d)", quanju.a[ti - 1].z, quanju.a[ti - 1].point.x, quanju.a[ti - 1].point.y, quanju.a[ti-1].point.q);
+	return 0;
+}

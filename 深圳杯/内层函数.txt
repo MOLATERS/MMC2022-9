@@ -1,0 +1,195 @@
+#include <stdio.h>
+#include <stdlib.h>
+struct Car{
+	double x;//车的位置
+	double bat;//车的电池量，这里放大6倍，总电量为600
+    double sta;//车的状态与罚时
+}car[125];
+
+struct battaryA{
+	double timemark;
+}batA[150];
+
+struct battaryB{
+	double timemark;
+}batB[150];
+
+double dt = 0.1;
+double t;
+int x1=0;
+int x2=0;//表示两个充电站位置，可以用double，不能取0/10
+int answer = 0;//不能再用作全局变量
+int numA2 = 125;//125-150
+int numB2 = 25;//0-25
+//printf("  ",x1,x2,numA2,numB2,answer);
+
+//下边的不能改
+int ini_num= 125;//初始发车数量
+int ic;//车辆编号
+int numA1 = 0;
+int numB1 = 0;
+
+int function(int x,int y,int numA_2,int numB_2){
+    x1=x;
+    x2=y;
+    numA2=numA_2;
+    numB2=numB_2;
+    answer = 0;
+    for (int i = 0; i < 125; i++)
+    {
+        car[i].x = 10-x1;
+        car[i].bat = 600;
+    }
+    for (int i = 0; i < numA2; i++){
+        batA[i].timemark = 0;
+    }
+    for (int i = 0; i < numB2; i++){
+        batB[i].timemark = 0;
+    }
+    for (int i = 0; i < ini_num; i++)
+    {
+        car[i].sta = -3;//sta = -3表示进入发车状态
+    }
+    for (t = 0; t < 60000; t += dt)
+    {
+        update(x1,x2,numA2,numB2);
+        printf("%d      %d     %d     %d",x1,x2,numA2,numB2);
+        printf("       %d\n",(int)t);
+        //printf("%lf %lf %lf %d\n",car[0].x,car[0].sta,car[0].bat,answer);
+        //printf("%d ",(int)car[1].x);
+    }
+    return answer;
+    //printf("%d",answer);
+}
+//>0 fashi ==0 准备发车 =-1 正在运行 =-2 等待电池
+
+void update(){
+    for (ic = 0; ic < 125; ic++)
+    {
+        if (((car[ic].sta<1e-6&&car[ic].sta>-1e-6)||car[ic].sta==-3)&&judge(ic))
+        {
+            if(car[ic].sta==-3&&numA2>=0){
+                numA2--;
+            }
+            car[ic].sta = -1;
+            //numA2--;
+        }
+
+        if (car[ic].sta == -1||car[ic].sta == -2)//sta - 1表示 在运行
+        {
+        if(car[ic].sta==-1){
+            if(car[ic].x<10&&car[ic].x>0)
+            {
+                car[ic].bat -= 2*dt;
+            }else if(car[ic].x>10&&car[ic].x<20)
+            {
+                car[ic].bat -= 3*dt;
+            }
+            if (car[ic].x<1e-6||(car[ic].x-10>-1e-6&&car[ic].x-10<1e-6)||car[ic].x>20-(1e-6))
+            {
+                car[ic].sta = 1;
+            }
+            car[ic].x += 1*dt;
+            if (car[ic].x>=20)
+            {
+                car[ic].x = car[ic].x - 20;
+            }
+            if(car[ic].x<1e-6) answer++;
+        }
+            checkcar(ic);//检车是否充电
+        }
+        if (car[ic].sta > 1e-6)//在罚时
+        {
+            car[ic].sta -= 1*dt;
+        }
+
+    }
+    for (numA1=0; numA1 < numA2; numA1++)
+    {
+        batA[numA1].timemark -= 1*dt;
+    }
+    for (numB1=0; numB1 < numB2; numB1++)
+    {
+        batB[numB1].timemark -= 1*dt;
+    }
+}
+void checkcar(int ic){
+    //if(car[ic].bat<=76&&car[ic].bat>=60) printf("A");
+    //if(car[ic].x-(10-x1)<1e-6&&car[ic].x-(10-x1)>-1e-6) printf("B");
+    if (car[ic].bat<=99&&car[ic].bat>=60&&car[ic].x-(10-x1)<1e-6&&car[ic].x-(10-x1)>-1e-6)
+    {
+        //printf("A");
+        if(car[ic].sta!=-2){
+            numA2++;
+            batA[numA2-1].timemark = 180;
+        }
+        //car[ic].sta = -2;
+        if(batA[0].timemark<=0&&numA2>=0)
+        {
+            car[ic].bat = 600;
+            //printf("B");
+            car[ic].sta = 2;
+            numA2--;
+            changeA();
+        }else{
+            car[ic].sta = -2;
+        }
+    }
+    if (car[ic].bat<=99&&car[ic].bat>=60&&car[ic].x-(10+x2)<1e-6&&car[ic].x-(10+x2)>-1e-6)
+    {
+        if(car[ic].sta!=-2){
+        numB2++;
+        batB[numB2-1].timemark = 180;
+        }
+        //car[ic].sta = -2;
+        //printf("B");
+        if (batB[0].timemark<=0&&numB2>=0)
+        {
+            car[ic].bat = 600;
+            //printf("B");
+            car[ic].sta = 2;
+            numB2--;
+            changeB();
+        }else{
+            car[ic].sta = -2;
+        }
+    }
+}
+void changeA(){
+    for (int i = 0; i < numA2; i++)
+    {
+        batA[i].timemark = batA[i+1].timemark;
+    }
+}
+void changeB(){
+    for (int i = 0; i < numB2; i++)
+    {
+        batB[i].timemark = batB[i+1].timemark;
+    }
+}
+//ic=9
+int judge(int ic){
+    int flag = 1;
+    for (int i = 0; i < 125; i++)
+    {
+     if(i!=ic){
+        if(car[ic].x-(10-x1)<1e-6&&car[ic].x-(10-x1)>-1e-6){
+            if(car[i].sta==-1&&car[i].x>9.8-x1&&car[i].x<10.2-x1){
+            flag = 0;}
+        }
+        if(car[ic].x - (10+x2)<1e-6&&car[ic].x - (10+x2)>-1e-6){
+            if(car[i].sta==-1&&car[i].x>9.8+x2&&car[i].x<10.2+x2){
+            flag = 0;}
+        }
+        if (car[ic].x<1e-6){
+            if(car[i].sta==-1&&car[i].x<0.2)
+            flag = 0;
+        }
+        if (car[ic].x - 10<1e-6&&car[ic].x - 10>-1e-6){
+            if(car[i].sta==-1&&car[i].x<10.2&&car[i].x>9.8)
+            flag = 0;
+        }
+        }
+    }
+    return flag;
+}
